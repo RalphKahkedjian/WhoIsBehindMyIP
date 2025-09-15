@@ -1,0 +1,13 @@
+#socials img {
+  transition: transform 0.3s ease-in-out;
+  cursor: pointer;
+}
+
+#socials img:nth-child(1):hover {
+  transform: translateY(-5px) translateX(3px) rotate(20deg);
+}
+
+
+#socials img:nth-child(2):hover {
+  transform: translateY(-5px) translateX(3px) rotate(-20deg);
+}
