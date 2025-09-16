@@ -11,3 +11,19 @@
 #socials img:nth-child(2):hover {
   transform: translateY(-5px) translateX(3px) rotate(-20deg);
 }
+
+@keyframes zoomInOut {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25); 
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.zoom-title {
+  animation: zoomInOut 2.5s infinite ease-in-out;
+}
