@@ -1,3 +1,4 @@
+const { makeSessionId, deterministicIPv4FromSession } = require('./utilis/IP_Generator');
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -6,98 +7,76 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-// In-memory lobbies
-let lobbies = {}; 
-// { lobbyId: { players: [{id, name, role}], status: "waiting"} }
-
-const FLAGS = ["red", "green", "blue", "pink", "orange"];
-const REFEREE = "white";
-
-// Helper → assign role randomly
-function assignRole(lobby) {
-  let assignedFlags = lobby.players.map(p => p.role);
-  let availableFlags = FLAGS.filter(f => !assignedFlags.includes(f));
-
-  // if referee not taken, 20% chance referee is next
-  if (!assignedFlags.includes(REFEREE) && lobby.players.length === 5) {
-    return REFEREE;
-  }
-
-  // pick a random flag from available
-  if (availableFlags.length > 0) {
-    return availableFlags[Math.floor(Math.random() * availableFlags.length)];
-  }
-
-  return null; // no roles left
-}
+let lobbies = {};
 
 io.on("connection", (socket) => {
   console.log("Player connected:", socket.id);
-  const ip = socket.handshake.address;
-  console.log(`Player connected, IP address of: ${ip}`);
 
-  // Create a new lobby
+  // Create lobby
   socket.on("createLobby", ({ lobbyId, playerName }) => {
     if (lobbies[lobbyId]) {
-      socket.emit("errorMessage", "Lobby ID already exists");
+      socket.emit("errorMessage", "Lobby already exists");
       return;
     }
 
-    const role = assignRole({ players: [] });
-    lobbies[lobbyId] = { 
-      players: [{ id: socket.id, name: playerName, role }], 
-      status: "waiting" 
-    };
-    socket.join(lobbyId);
+    const sessionId = makeSessionId();
+    const fakeIp = deterministicIPv4FromSession(sessionId);
 
+    const player = {
+      socketId: socket.id,
+      sessionId,
+      displayName: playerName,
+      fakeIp
+    };
+
+    lobbies[lobbyId] = {
+      id: lobbyId,
+      players: [player],
+      status: "waiting"
+    };
+
+    socket.join(lobbyId);
+    console.log("Creating player:", playerName, "with IP:", fakeIp);
     io.to(lobbyId).emit("lobbyUpdate", lobbies[lobbyId]);
   });
 
-  // Join an existing lobby
+  // Join lobby
   socket.on("joinLobby", ({ lobbyId, playerName }) => {
     const lobby = lobbies[lobbyId];
     if (!lobby) {
-      socket.emit("errorMessage", "Lobby does not exist");
+      socket.emit("errorMessage", "Lobby not found");
       return;
     }
-    if (lobby.players.length >= 6) {
-      socket.emit("errorMessage", "Lobby is full");
-      return;
-    }
-
-    const role = assignRole(lobby);
-    if (!role) {
-      socket.emit("errorMessage", "No roles available");
+    if (lobby.players.length >= 10) {
+      socket.emit("errorMessage", "Lobby is full (max 10 players)");
       return;
     }
 
-    lobby.players.push({ id: socket.id, name: playerName, role });
+    const sessionId = makeSessionId();
+    const fakeIp = deterministicIPv4FromSession(sessionId);
+
+    const player = {
+      socketId: socket.id,
+      sessionId,
+      displayName: playerName,
+      fakeIp
+    };
+
+    lobby.players.push(player);
     socket.join(lobbyId);
 
-    // if lobby is full → set status to in-game
-    if (lobby.players.length === 6) {
+    if (lobby.players.length === 10) {
       lobby.status = "in-game";
     }
 
     io.to(lobbyId).emit("lobbyUpdate", lobby);
   });
 
-  // Delete lobby manually
-  socket.on("deleteLobby", ({ lobbyId }) => {
-    if (lobbies[lobbyId]) {
-      delete lobbies[lobbyId];
-      io.emit("lobbyDeleted", lobbyId);
-      console.log(`Lobby ${lobbyId} deleted`);
-    }
-  });
-
   // Handle disconnect
   socket.on("disconnect", () => {
-    console.log("Player disconnected:", socket.id);
-
     for (let lobbyId in lobbies) {
       const lobby = lobbies[lobbyId];
-      lobby.players = lobby.players.filter(p => p.id !== socket.id);
+      lobby.players = lobby.players.filter(p => p.socketId !== socket.id);
 
       if (lobby.players.length === 0) {
         delete lobbies[lobbyId];
