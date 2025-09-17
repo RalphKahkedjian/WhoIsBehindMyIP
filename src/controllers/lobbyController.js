@@ -20,7 +20,7 @@ export default function useLobbyController() {
   useEffect(() => {
     socket.on('lobbyUpdate', (updatedLobby) => {
       setLobby(updatedLobby);
-      if (updatedLobby.players.length === 5) {
+      if (updatedLobby.players.length === 6) {
         setTimeout(() => navigate('/gameboard'), 2000);
       }
     });
