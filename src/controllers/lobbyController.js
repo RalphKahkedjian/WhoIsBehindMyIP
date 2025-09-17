@@ -1,24 +1,27 @@
-import { useState, useEffect, useRef } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { io } from 'socket.io-client'; // make sure to import as { io }
+import { io } from 'socket.io-client';
+import { LobbyContext } from '../context/lobbyContext'
 
-const socket = io("http://localhost:3001"); // <-- create a single socket instance
+const socket = io("http://localhost:3001");
 
 export default function useLobbyController() {
-  const [lobbyCode, setLobbyCode] = useState('');
-  const [username, setUsername] = useState('');
-  const [inLobby, setInLobby] = useState(false);
-  const [isNewLobby, setIsNewLobby] = useState(false);
-  const [lobby, setLobby] = useState(null);
-  const [isMuted, setIsMuted] = useState(true);
-  const audioRef = useRef(null);
   const navigate = useNavigate();
+  const audioRef = useRef(null);
+
+  const {
+    lobby, setLobby,
+    lobbyCode, setLobbyCode,
+    username, setUsername,
+    inLobby, setInLobby,
+    isNewLobby, setIsNewLobby
+  } = useContext(LobbyContext);
 
   useEffect(() => {
     socket.on('lobbyUpdate', (updatedLobby) => {
       setLobby(updatedLobby);
-      if (updatedLobby.players.length === 6) {
-        setTimeout(() => navigate('/gameboard'), 5000);
+      if (updatedLobby.players.length === 5) {
+        setTimeout(() => navigate('/gameboard'), 2000);
       }
     });
 
@@ -65,14 +68,13 @@ export default function useLobbyController() {
 
   const toggleMute = () => {
     if (audioRef.current) audioRef.current.muted = !audioRef.current.muted;
-    setIsMuted(audioRef.current.muted);
   };
 
   return {
     lobbyCode, setLobbyCode,
     username, setUsername,
     inLobby, isNewLobby, lobby,
-    isMuted, audioRef,
+    audioRef,
     handleCreateLobby, handleJoinLobby, handleLeaveLobby, toggleMute
   };
 }

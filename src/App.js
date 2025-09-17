@@ -1,16 +1,19 @@
-// App.js
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Lobby from './views/lobby';
-import Gameboard from './views/gameboard';
+import { LobbyProvider } from '../src/context/lobbyContext'
+import Lobby from '../src/views/lobby'
+import Gameboard from '../src/views/gameboard';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
-export default function App() {
+function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Lobby />} />
-        <Route path="/gameboard" element={<Gameboard />} />
-      </Routes>
-    </BrowserRouter>
+    <LobbyProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Lobby />} />
+          <Route path="/gameboard" element={<Gameboard />} />
+        </Routes>
+      </Router>
+    </LobbyProvider>
   );
 }
+
+export default App;
